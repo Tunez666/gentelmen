@@ -1,0 +1,178 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SyncStatus {
+  PENDING
+  IN_PROGRESS
+  SUCCESS
+  FAILED
+
+  @@map("sync_status")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  playlists Playlists[]
+  favorites Favorite[]
+
+  @@map("users")
+}
+
+model Provider {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  baseUrl   String   @unique
+  createdAt DateTime @default(now())
+
+  artistSources    ArtistSource[]
+  trackSources     TrackSource[]
+  providerRequests ProviderRequest[]
+
+  @@map("providers")
+}
+
+model Artist {
+  id             Int      @id @default(autoincrement())
+  name           String
+  normalizedName String
+  createdAt      DateTime @default(now())
+
+  albums        Album[]
+  tracks        Track[]
+  artistSources ArtistSource[]
+
+  @@index([normalizedName])
+  @@map("artists")
+}
+
+model ArtistSource {
+  id           Int        @id @default(autoincrement())
+  artistId     Int
+  providerId   Int
+  externalId   String
+  lastSyncedAt DateTime?
+  syncStatus   SyncStatus @default(PENDING)
+  priority     Int        @default(0)
+
+  artist   Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([artistId, providerId])
+  @@unique([providerId, externalId])
+  @@map("artist_sources")
+}
+
+model Album {
+  id          Int       @id @default(autoincrement())
+  title       String
+  releaseDate DateTime?
+  artistId    Int
+  createdAt   DateTime  @default(now())
+
+  artist Artist  @relation(fields: [artistId], references: [id])
+  tracks Track[]
+
+  @@map("albums")
+}
+
+model Track {
+  id         Int      @id @default(autoincrement())
+  title      String
+  durationMs Int?
+  artistId   Int
+  albumId    Int?
+  createdAt  DateTime @default(now())
+
+  artist         Artist          @relation(fields: [artistId], references: [id])
+  album          Album?          @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  trackSources   TrackSource[]
+  playlistTracks PlaylistTrack[]
+  favorites      Favorite[]
+
+  @@map("tracks")
+}
+
+model TrackSource {
+  id         Int    @id @default(autoincrement())
+  trackId    Int
+  providerId Int
+  externalId String
+
+  track    Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, externalId])
+  @@map("track_sources")
+}
+
+model Playlists {
+  id        Int      @id @default(autoincrement())
+  title     String
+  userId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tracks PlaylistTrack[]
+
+  @@map("playlists")
+}
+
+model PlaylistTrack {
+  id         Int      @id @default(autoincrement())
+  playlistId Int
+  trackId    Int
+  position   Int
+  addedAt    DateTime @default(now())
+
+  playlist Playlists @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  track    Track     @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([playlistId, position])
+  @@map("playlist_tracks")
+}
+
+model Favorite {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  trackId   Int
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, trackId])
+  @@map("favorites")
+}
+
+model ProviderRequest {
+  id             Int      @id @default(autoincrement())
+  providerId     Int
+  endpoint       String
+  httpMethod     String
+  requestedAt    DateTime @default(now())
+  statusCode     Int?
+  responseTimeMs Int?
+  success        Boolean
+  errorCode      String?
+  errorMessage   String?
+
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId, requestedAt])
+  @@index([success, requestedAt])
+  @@map("provider_requests")
+}

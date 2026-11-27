@@ -33,7 +33,7 @@ Requirements: Docker Engine and Docker Compose.
    cp .env.example .env
    ```
 
-3. Set the values required by the provider client in `.env`.
+3. Set local PostgreSQL credentials and the matching `DATABASE_URL` password. Add your Audius API key if you plan to use the Audius integration.
 4. Start the services:
 
    ```bash
@@ -51,6 +51,7 @@ Stop the services with `docker compose down`. Add `-v` only if you also want to 
 
 | Variable | Purpose |
 |---|---|
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | PostgreSQL container configuration |
 | `DATABASE_URL` | PostgreSQL connection string |
 | `AUDIUS_API_KEY` | API key used by the Audius client |
 | `AUDIUS_BASE_URL` | Base URL used by the Audius client |
